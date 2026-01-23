@@ -29,6 +29,8 @@ public class SecurityConfigurations {
             .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
             .authorizeHttpRequests(authorizeRequests -> authorizeRequests
                     .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
+                    // Error endpoint
+                    .requestMatchers("/error").permitAll()
                     // Swagger/OpenAPI endpoints
                     .requestMatchers("/api-docs/**", "/swagger-ui/**", "/swagger-ui.html", "/v3/api-docs/**").permitAll()
                     // Auth endpoints

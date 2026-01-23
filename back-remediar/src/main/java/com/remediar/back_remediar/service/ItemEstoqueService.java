@@ -46,6 +46,12 @@ public class ItemEstoqueService {
                 .map(itemEstoqueMapper::toDTO);
     }
 
+    @Transactional(readOnly = true)
+    public Page<ItemEstoqueDTO> findByEstoqueId(Long estoqueId, Pageable pageable) {
+        return itemEstoqueRepository.findByEstoqueId(estoqueId, pageable)
+                .map(itemEstoqueMapper::toDTO);
+    }
+
     @Transactional
     public ItemEstoqueDTO criar(ItemEstoqueCreateDTO dto) {
         System.out.println("ItemEstoqueService.criar() - Iniciando criação de item de estoque com DTO: " + dto);

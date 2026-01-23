@@ -55,6 +55,14 @@ public class ItemEstoqueController {
         return ResponseEntity.ok(itensEstoque);
     }
 
+    @Operation(summary = "Listar itens de estoque por ID do estoque")
+    @ApiResponse(responseCode = "200", description = "Lista retornada com sucesso")
+    @GetMapping("/estoqueId/{estoqueId}")
+    public ResponseEntity<Page<ItemEstoqueDTO>> findByEstoqueId(@PathVariable Long estoqueId, Pageable pageable) {
+        Page<ItemEstoqueDTO> itensEstoque = itemEstoqueService.findByEstoqueId(estoqueId, pageable);
+        return ResponseEntity.ok(itensEstoque);
+    }
+
     @Operation(summary = "Excluir item de estoque por ID")
     @ApiResponses(value = {
             @ApiResponse(responseCode = "204", description = "Item removido com sucesso"),

@@ -7,6 +7,8 @@ import java.time.LocalDate;
 
 public record ItemEstoqueDTO(
         Long id,
+        String nomeComercial,
+        String principioAtivo,
         String apresentacao,
         Long produtoId,
 
