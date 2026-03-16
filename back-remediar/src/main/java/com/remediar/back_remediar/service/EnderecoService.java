@@ -20,6 +20,11 @@ public class EnderecoService {
         return toDto(endereco);
     }
 
+    public Endereco saveAndReturnEntity(EnderecoDTO enderecoDTO) {
+        Endereco endereco = fromDto(enderecoDTO);
+        return enderecoRepository.save(endereco);
+    }
+
     public EnderecoDTO toDto(Endereco endereco) {
         EnderecoDTO enderecoDTO = new EnderecoDTO();
         enderecoDTO.setRua(endereco.getRua());

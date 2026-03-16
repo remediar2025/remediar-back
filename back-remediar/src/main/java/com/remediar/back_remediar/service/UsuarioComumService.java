@@ -20,7 +20,6 @@ import jakarta.transaction.Transactional;
 import java.util.List;
 import java.util.Objects;
 
-
 @Service
 public class UsuarioComumService {
 
@@ -36,10 +35,10 @@ public class UsuarioComumService {
     private final UserRepository userRepository;
 
     public UsuarioComumService(UsuarioComumRepository usuarioComumRepository,
-                               UsuarioComumPFRepository usuarioComumPFRepository,
-                               UsuarioComumPJRepository usuarioComumPJRepository,
-                               AuthorizationService authService,
-                               EnderecoService enderecoService, UserRepository userRepository) {
+            UsuarioComumPFRepository usuarioComumPFRepository,
+            UsuarioComumPJRepository usuarioComumPJRepository,
+            AuthorizationService authService,
+            EnderecoService enderecoService, UserRepository userRepository) {
         this.usuarioComumRepository = usuarioComumRepository;
         this.usuarioComumPFRepository = usuarioComumPFRepository;
         this.usuarioComumPJRepository = usuarioComumPJRepository;
@@ -80,39 +79,41 @@ public class UsuarioComumService {
 
     @Transactional
     public UsuarioComumDTO createPJ(UsuarioComumDTO obj) {
-        if(authService.checkLoginExits(obj.user().getLogin())) {
+        if (authService.checkLoginExits(obj.user().getLogin())) {
             throw new IllegalArgumentException("Já existe um cadastro com esse e-mail.");
         }
 
         if (obj.documento().length() == 11) {
-            if(usuarioComumPFRepository.existsByCpf(obj.documento())) {
+            if (usuarioComumPFRepository.existsByCpf(obj.documento())) {
                 throw new IllegalArgumentException("Já existe um cadastro com esse cpf.");
             } else {
                 throw new RuntimeException("Não é possível cadastrar um CPF como PJ.");
             }
         } else if (obj.documento().length() == 14) {
-            if(usuarioComumPJRepository.existsByCnpj(obj.documento())) {
+            if (usuarioComumPJRepository.existsByCnpj(obj.documento())) {
                 throw new IllegalArgumentException("Já existe um cadastro com esse cnpj.");
             }
 
-            UsuarioComumPJ usuarioComumPJ = new UsuarioComumPJ();
-            usuarioComumPJ.setNome(obj.nome());
-            usuarioComumPJ.setTelefone(obj.telefone());
-            usuarioComumPJ.setCnpj(obj.documento());
-            usuarioComumPJ.getUser().setStatus(StatusConta.PENDENTE_VERIFICACAO);
-            
-            obj.user().setPassword(authService.encryptPassword(obj.user().getPassword()));
-            obj.user().setLogin(obj.user().getLogin());
-            obj.user().setRole(UserRole.USER);
+ UsuarioComumPJ usuarioComumPJ = new UsuarioComumPJ();
+        usuarioComumPJ.setNome(obj.nome());
+        usuarioComumPJ.setTelefone(obj.telefone());
+        usuarioComumPJ.setCnpj(obj.documento());
 
-            EnderecoDTO enderecoDTO = enderecoService.save(obj.endereco());
-            usuarioComumPJ.setEndereco(enderecoService.fromDto(enderecoDTO));
+        // Criar e configurar o User ANTES de associá-lo
+        obj.user().setPassword(authService.encryptPassword(obj.user().getPassword()));
+        obj.user().setLogin(obj.user().getLogin());
+        obj.user().setRole(UserRole.USER);
+        
+        User user = userDtoToEntity(obj.user());
+        user.setStatus(StatusConta.PENDENTE_VERIFICACAO);
+        usuarioComumPJ.setUser(user);
 
-            usuarioComumPJ.setUser(userDtoToEntity(obj.user()));
+        Endereco endereco = enderecoService.saveAndReturnEntity(obj.endereco());
+        usuarioComumPJ.setEndereco(endereco);
 
-            usuarioComumPJRepository.save(usuarioComumPJ);
-            usuarioComumPJ.setId(usuarioComumPJ.getId());
-            return pjToDto(usuarioComumPJ);
+        usuarioComumPJRepository.save(usuarioComumPJ);
+        usuarioComumPJ.setId(usuarioComumPJ.getId());
+        return pjToDto(usuarioComumPJ);
         } else {
             throw new IllegalArgumentException("O documento deve ter 11 ou 14 dígitos.");
         }
@@ -120,11 +121,11 @@ public class UsuarioComumService {
 
     @Transactional
     public UsuarioComumPFDTO createPF(UsuarioComumPFDTO obj) {
-        if(authService.checkLoginExits(obj.usuario().user().getLogin()))
+        if (authService.checkLoginExits(obj.usuario().user().getLogin()))
             throw new IllegalArgumentException("Já existe um cadastro com esse e-mail.");
 
         if (obj.usuario().documento().length() == 11) {
-            if(usuarioComumPFRepository.existsByCpf(obj.usuario().documento())) {
+            if (usuarioComumPFRepository.existsByCpf(obj.usuario().documento())) {
                 throw new IllegalArgumentException("Já existe um cadastro com esse cpf.");
             } else {
                 UsuarioComumPF usuarioComumPF = new UsuarioComumPF();
@@ -136,8 +137,8 @@ public class UsuarioComumService {
                 obj.usuario().user().setLogin(obj.usuario().user().getLogin());
                 obj.usuario().user().setRole(UserRole.USER);
 
-                EnderecoDTO enderecoDTO = enderecoService.save(obj.usuario().endereco());
-                usuarioComumPF.setEndereco(enderecoService.fromDto(enderecoDTO));
+                Endereco endereco = enderecoService.saveAndReturnEntity(obj.usuario().endereco());
+                usuarioComumPF.setEndereco(endereco);
 
                 usuarioComumPF.setUser(userDtoToEntity(obj.usuario().user()));
 
@@ -153,7 +154,7 @@ public class UsuarioComumService {
                 return pfToDto(usuarioComumPF);
             }
         } else if (obj.usuario().documento().length() == 14) {
-            if(usuarioComumPJRepository.existsByCnpj(obj.usuario().documento()))
+            if (usuarioComumPJRepository.existsByCnpj(obj.usuario().documento()))
                 throw new IllegalArgumentException("Já existe um cadastro com esse cnpj.");
 
             else {
@@ -186,7 +187,8 @@ public class UsuarioComumService {
             usuarioComumPJRepository.save(usuarioComumPJ);
             return pjToDto(usuarioComumPJ);
         } else {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Não é possível atualizar um usuário PF como PJ.");
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                    "Não é possível atualizar um usuário PF como PJ.");
         }
     }
 
@@ -218,7 +220,8 @@ public class UsuarioComumService {
             usuarioComumPFRepository.save(usuarioComumPF);
             return pfToDto(usuarioComumPF);
         } else {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Não é possível atualizar um usuário PJ como PF.");
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                    "Não é possível atualizar um usuário PJ como PF.");
         }
     }
 
@@ -255,8 +258,7 @@ public class UsuarioComumService {
                 usuarioComumPJ.getCnpj(),
                 usuarioComumPJ.getTelefone(),
                 enderecoService.toDto(usuarioComumPJ.getEndereco()),
-                userDTO
-        );
+                userDTO);
     }
 
     public UsuarioComumPFDTO pfToDto(UsuarioComumPF usuarioComum) {
@@ -269,14 +271,12 @@ public class UsuarioComumService {
                         usuarioComum.getCpf(),
                         usuarioComum.getTelefone(),
                         enderecoService.toDto(usuarioComum.getEndereco()),
-                        userDTO
-                ),
+                        userDTO),
                 usuarioComum.getGenero(),
                 usuarioComum.getDataNascimento(),
                 usuarioComum.getEscolaridade(),
                 usuarioComum.getQtdPessoasCasa(),
-                usuarioComum.getRendaFamiliar()
-        );
+                usuarioComum.getRendaFamiliar());
     }
 
     @Transactional

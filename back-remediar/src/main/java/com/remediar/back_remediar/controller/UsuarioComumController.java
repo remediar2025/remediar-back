@@ -18,7 +18,6 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.servlet.support.ServletUriComponentsBuilder;
 
-
 import jakarta.validation.Valid;
 
 import java.net.URI;
@@ -33,7 +32,8 @@ public class UsuarioComumController {
     private final NotificationProducer notificationProducer;
     private final TwoFactorAuthenticationService twoFactorAuthenticationService;
 
-    public UsuarioComumController(UsuarioComumService usuarioComumService, NotificationProducer notificationProducer, TwoFactorAuthenticationService twoFactorAuthenticationService) {
+    public UsuarioComumController(UsuarioComumService usuarioComumService, NotificationProducer notificationProducer,
+            TwoFactorAuthenticationService twoFactorAuthenticationService) {
         this.usuarioComumService = usuarioComumService;
         this.notificationProducer = notificationProducer;
         this.twoFactorAuthenticationService = twoFactorAuthenticationService;
@@ -60,35 +60,37 @@ public class UsuarioComumController {
     public ResponseEntity<UsuarioComumDTO> createUsuarioComumPJ(@Valid @RequestBody UsuarioComumDTO obj) {
         UsuarioComumDTO newUsuario = usuarioComumService.createPJ(obj);
 
-        String codigo = twoFactorAuthenticationService.gerarCodigo(obj.user().getLogin());
+        // String codigo =
+        // twoFactorAuthenticationService.gerarCodigo(obj.user().getLogin());
 
-        notificationProducer.sendNotification(new NotificationRequestDto(
-                newUsuario.id(),
-                newUsuario.user().getLogin(),
-                newUsuario.user().getLogin(),
-                "Verificação de dois fatores",
-                "Olá, " + newUsuario.nome()
-                        + "! Seja bem vindo(a) à Remediar!"
-                        + "\nSeu código de verificação é: " + codigo
-                        + "\nAtenção, este código é válido por 15 minutos."
-                        + "\nCaso não tenha solicitado, desconsidere esta mensagem.",
-                TipoCanal.EMAIL
-        ));
+        // notificationProducer.sendNotification(new NotificationRequestDto(
+        // newUsuario.id(),
+        // newUsuario.user().getLogin(),
+        // newUsuario.user().getLogin(),
+        // "Verificação de dois fatores",
+        // "Olá, " + newUsuario.nome()
+        // + "! Seja bem vindo(a) à Remediar!"
+        // + "\nSeu código de verificação é: " + codigo
+        // + "\nAtenção, este código é válido por 15 minutos."
+        // + "\nCaso não tenha solicitado, desconsidere esta mensagem.",
+        // TipoCanal.EMAIL
+        // ));
 
+        // notificationProducer.sendNotification(new NotificationRequestDto(
+        // newUsuario.id(),
+        // newUsuario.user().getLogin(),
+        // newUsuario.user().getLogin(),
+        // "Verificação de dois fatores",
+        // "Olá, " + newUsuario.nome() + "! Bem vindo(a) à Remediar!\nSeu código de
+        // verificação é: " +
+        // twoFactorAuthenticationService.gerarCodigo(newUsuario.user().getLogin()),
+        // TipoCanal.EMAIL
+        // ));
         URI uri = ServletUriComponentsBuilder.fromCurrentRequest()
                 .path("/{id}")
                 .buildAndExpand(newUsuario.id())
                 .toUri();
 
-
-        notificationProducer.sendNotification(new NotificationRequestDto(
-                newUsuario.id(),
-                newUsuario.user().getLogin(),
-                newUsuario.user().getLogin(),
-                "Verificação de dois fatores",
-                "Olá, " + newUsuario.nome() + "! Bem vindo(a) à Remediar!\nSeu código de verificação é: " + twoFactorAuthenticationService.gerarCodigo(newUsuario.user().getLogin()),
-                TipoCanal.EMAIL
-        ));
         return ResponseEntity.created(uri).body(newUsuario);
     }
 
@@ -102,20 +104,21 @@ public class UsuarioComumController {
     public ResponseEntity<UsuarioComumPFDTO> createUsuarioComumPF(@Valid @RequestBody UsuarioComumPFDTO obj) {
         UsuarioComumPFDTO newUsuario = usuarioComumService.createPF(obj);
 
-        String codigo = twoFactorAuthenticationService.gerarCodigo(obj.usuario().user().getLogin());
+        // String codigo =
+        // twoFactorAuthenticationService.gerarCodigo(obj.usuario().user().getLogin());
 
-        notificationProducer.sendNotification(new NotificationRequestDto(
-                newUsuario.usuario().id(),
-                newUsuario.usuario().user().getLogin(),
-                newUsuario.usuario().user().getLogin(),
-                "Verificação de dois fatores",
-                "Olá, " + newUsuario.usuario().nome()
-                        + "! Seja bem vindo(a) à Remediar!"
-                        + "\nSeu código de verificação é: " + codigo
-                        + "\nAtenção, este código é válido por 15 minutos."
-                        + "\nCaso não tenha solicitado, desconsidere esta mensagem.",
-                TipoCanal.EMAIL
-        ));
+        // notificationProducer.sendNotification(new NotificationRequestDto(
+        // newUsuario.usuario().id(),
+        // newUsuario.usuario().user().getLogin(),
+        // newUsuario.usuario().user().getLogin(),
+        // "Verificação de dois fatores",
+        // "Olá, " + newUsuario.usuario().nome()
+        // + "! Seja bem vindo(a) à Remediar!"
+        // + "\nSeu código de verificação é: " + codigo
+        // + "\nAtenção, este código é válido por 15 minutos."
+        // + "\nCaso não tenha solicitado, desconsidere esta mensagem.",
+        // TipoCanal.EMAIL
+        // ));
 
         URI uri = ServletUriComponentsBuilder.fromCurrentRequest()
                 .path("/{id}")
@@ -126,7 +129,8 @@ public class UsuarioComumController {
     }
 
     @PutMapping("/pf/{id}")
-    public ResponseEntity<UsuarioComumPFDTO> atualizarPF(@PathVariable Long id, @Valid @RequestBody UsuarioComumPFDTO obj) {
+    public ResponseEntity<UsuarioComumPFDTO> atualizarPF(@PathVariable Long id,
+            @Valid @RequestBody UsuarioComumPFDTO obj) {
         UsuarioComumPFDTO usuarioComumPFDTOAtualizado = usuarioComumService.atualizarPF(id, obj);
         return ResponseEntity.ok(usuarioComumPFDTOAtualizado);
     }
@@ -173,8 +177,7 @@ public class UsuarioComumController {
                         + "\nSeu código de verificação é: " + codigo
                         + "\nAtenção, este código é válido por 15 minutos."
                         + "\nCaso não tenha solicitado, desconsidere esta mensagem.",
-                TipoCanal.EMAIL
-        ));
+                TipoCanal.EMAIL));
 
         return ResponseEntity.ok("Código reenviado com sucesso.");
     }
