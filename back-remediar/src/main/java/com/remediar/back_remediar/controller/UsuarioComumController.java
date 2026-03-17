@@ -30,7 +30,7 @@ public class UsuarioComumController {
 
     private final UsuarioComumService usuarioComumService;
     private final NotificationProducer notificationProducer;
-    private final TwoFactorAuthenticationService twoFactorAuthenticationService;
+    private TwoFactorAuthenticationService twoFactorAuthenticationService;
 
     public UsuarioComumController(UsuarioComumService usuarioComumService, NotificationProducer notificationProducer,
             TwoFactorAuthenticationService twoFactorAuthenticationService) {
