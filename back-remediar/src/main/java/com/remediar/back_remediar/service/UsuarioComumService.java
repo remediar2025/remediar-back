@@ -124,86 +124,50 @@ public UsuarioComumDTO createPJ(UsuarioComumDTO obj) {
 }
 
     @Transactional
-public UsuarioComumPFDTO createPF(UsuarioComumPFDTO obj) {
-    try {
-        if (authService.checkLoginExits(obj.usuario().user().getLogin())) {
+    public UsuarioComumPFDTO createPF(UsuarioComumPFDTO obj) {
+        if (authService.checkLoginExits(obj.usuario().user().getLogin()))
             throw new IllegalArgumentException("Já existe um cadastro com esse e-mail.");
-        }
 
-        if (obj.usuario().documento().length() == 14) {
-            if (usuarioComumPJRepository.existsByCnpj(obj.usuario().documento())) {
-                throw new IllegalArgumentException("Já existe um cadastro com esse cnpj.");
-            } else {
-                throw new RuntimeException("Não é possível cadastrar um CNPJ como PF.");
-            }
-        } else if (obj.usuario().documento().length() == 11) {
+        if (obj.usuario().documento().length() == 11) {
             if (usuarioComumPFRepository.existsByCpf(obj.usuario().documento())) {
                 throw new IllegalArgumentException("Já existe um cadastro com esse cpf.");
+            } else {
+                UsuarioComumPF usuarioComumPF = new UsuarioComumPF();
+                usuarioComumPF.setNome(obj.usuario().nome());
+                usuarioComumPF.setTelefone(obj.usuario().telefone());
+                usuarioComumPF.setCpf(obj.usuario().documento());
+
+                obj.usuario().user().setPassword(authService.encryptPassword(obj.usuario().user().getPassword()));
+                obj.usuario().user().setLogin(obj.usuario().user().getLogin());
+                obj.usuario().user().setRole(UserRole.USER);
+
+                Endereco endereco = enderecoService.saveAndReturnEntity(obj.usuario().endereco());
+                usuarioComumPF.setEndereco(endereco);
+
+                usuarioComumPF.setUser(userDtoToEntity(obj.usuario().user()));
+
+                usuarioComumPFRepository.save(usuarioComumPF);
+                usuarioComumPF.setId(usuarioComumPF.getId());
+
+                usuarioComumPF.setGenero(obj.genero());
+                usuarioComumPF.setDataNascimento(obj.dataNascimento());
+                usuarioComumPF.setEscolaridade(obj.escolaridade());
+                usuarioComumPF.setQtdPessoasCasa(obj.qtdPessoasCasa());
+                usuarioComumPF.setRendaFamiliar(obj.rendaFamiliar());
+                usuarioComumPF.getUser().setStatus(StatusConta.PENDENTE_VERIFICACAO);
+                return pfToDto(usuarioComumPF);
             }
+        } else if (obj.usuario().documento().length() == 14) {
+            if (usuarioComumPJRepository.existsByCnpj(obj.usuario().documento()))
+                throw new IllegalArgumentException("Já existe um cadastro com esse cnpj.");
 
-            UsuarioComumPF usuarioComumPF = new UsuarioComumPF();
-            usuarioComumPF.setNome(obj.usuario().nome());
-            usuarioComumPF.setTelefone(obj.usuario().telefone());
-            usuarioComumPF.setCpf(obj.usuario().documento());
-
-            // Preparar e salvar o endereço primeiro
-            Endereco endereco = enderecoService.saveAndReturnEntity(obj.usuario().endereco());
-            usuarioComumPF.setEndereco(endereco);
-
-            // Criar e configurar o User
-            UserDTO userDTO = obj.usuario().user();
-            userDTO.setPassword(authService.encryptPassword(userDTO.getPassword()));
-            userDTO.setRole(UserRole.USER);
-            
-            User user = userDtoToEntity(userDTO);
-            user.setStatus(StatusConta.PENDENTE_VERIFICACAO);
-            
-            // Associar o user ao usuário PF
-            usuarioComumPF.setUser(user);
-
-            usuarioComumPF.setDataNascimento(obj.dataNascimento());
-            usuarioComumPF.setGenero(obj.genero());
-
-            // Salvar tudo
-            usuarioComumPFRepository.save(usuarioComumPF);
-
-            return pfToDto(usuarioComumPF);
+            else {
+                throw new RuntimeException("Não é possível cadastrar um CPF como PJ.");
+            }
         } else {
             throw new IllegalArgumentException("O documento deve ter 11 ou 14 dígitos.");
         }
-    } catch (org.springframework.data.redis.RedisConnectionFailureException e) {
-        // Log do erro mas não interrompe o fluxo
-        System.err.println("Redis não disponível, continuando sem cache: " + e.getMessage());
-        
-        // Continua o fluxo normal sem Redis
-        if (authService.checkLoginExits(obj.usuario().user().getLogin())) {
-            throw new IllegalArgumentException("Já existe um cadastro com esse e-mail.");
-        }
-
-        UsuarioComumPF usuarioComumPF = new UsuarioComumPF();
-        usuarioComumPF.setNome(obj.usuario().nome());
-        usuarioComumPF.setTelefone(obj.usuario().telefone());
-        usuarioComumPF.setCpf(obj.usuario().documento());
-
-        Endereco endereco = enderecoService.saveAndReturnEntity(obj.usuario().endereco());
-        usuarioComumPF.setEndereco(endereco);
-
-        UserDTO userDTO = obj.usuario().user();
-        userDTO.setPassword(authService.encryptPassword(userDTO.getPassword()));
-        userDTO.setRole(UserRole.USER);
-        
-        User user = userDtoToEntity(userDTO);
-        user.setStatus(StatusConta.PENDENTE_VERIFICACAO);
-        usuarioComumPF.setUser(user);
-
-        usuarioComumPF.setDataNascimento(obj.dataNascimento());
-        usuarioComumPF.setGenero(obj.genero());
-
-        usuarioComumPFRepository.save(usuarioComumPF);
-
-        return pfToDto(usuarioComumPF);
     }
-}
 
     @Transactional
     public UsuarioComumDTO atualizarPJ(Long id, UsuarioComumDTO obj) {
