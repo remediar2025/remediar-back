@@ -5,14 +5,7 @@ spring:
     username: rabbitmq
     password: rabbitmq
 
-  # Redis desabilitado - não é necessário para operação básica
-  # data:
-  #   redis:
-  #     host: redis
-  #     port: 6379
-  
-  # Desabilita auto-configuração do Redis
-  autoconfigure:
-    exclude:
-      - org.springframework.boot.autoconfigure.data.redis.RedisAutoConfiguration
-      - org.springframework.boot.autoconfigure.data.redis.RedisRepositoriesAutoConfiguration
+  data:
+    redis:
+      host: redis
+      port: 6379
