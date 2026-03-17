@@ -1,5 +1,6 @@
 package com.remediar.back_remediar.service;
 
+import org.springframework.boot.autoconfigure.condition.ConditionalOnBean;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.stereotype.Service;
 
@@ -7,6 +8,7 @@ import java.security.SecureRandom;
 import java.time.Duration;
 
 @Service
+@ConditionalOnBean(RedisTemplate.class)
 public class TwoFactorAuthenticationService {
 
     private final RedisTemplate<String, String> redisTemplate;

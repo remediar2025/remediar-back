@@ -77,47 +77,51 @@ public class UsuarioComumService {
                 .toList();
     }
 
-    @Transactional
-    public UsuarioComumDTO createPJ(UsuarioComumDTO obj) {
-        if (authService.checkLoginExits(obj.user().getLogin())) {
-            throw new IllegalArgumentException("Já existe um cadastro com esse e-mail.");
+   @Transactional
+public UsuarioComumDTO createPJ(UsuarioComumDTO obj) {
+    if (authService.checkLoginExits(obj.user().getLogin())) {
+        throw new IllegalArgumentException("Já existe um cadastro com esse e-mail.");
+    }
+
+    if (obj.documento().length() == 11) {
+        if (usuarioComumPFRepository.existsByCpf(obj.documento())) {
+            throw new IllegalArgumentException("Já existe um cadastro com esse cpf.");
+        } else {
+            throw new RuntimeException("Não é possível cadastrar um CPF como PJ.");
+        }
+    } else if (obj.documento().length() == 14) {
+        if (usuarioComumPJRepository.existsByCnpj(obj.documento())) {
+            throw new IllegalArgumentException("Já existe um cadastro com esse cnpj.");
         }
 
-        if (obj.documento().length() == 11) {
-            if (usuarioComumPFRepository.existsByCpf(obj.documento())) {
-                throw new IllegalArgumentException("Já existe um cadastro com esse cpf.");
-            } else {
-                throw new RuntimeException("Não é possível cadastrar um CPF como PJ.");
-            }
-        } else if (obj.documento().length() == 14) {
-            if (usuarioComumPJRepository.existsByCnpj(obj.documento())) {
-                throw new IllegalArgumentException("Já existe um cadastro com esse cnpj.");
-            }
-
- UsuarioComumPJ usuarioComumPJ = new UsuarioComumPJ();
+        UsuarioComumPJ usuarioComumPJ = new UsuarioComumPJ();
         usuarioComumPJ.setNome(obj.nome());
         usuarioComumPJ.setTelefone(obj.telefone());
         usuarioComumPJ.setCnpj(obj.documento());
 
-        // Criar e configurar o User ANTES de associá-lo
-        obj.user().setPassword(authService.encryptPassword(obj.user().getPassword()));
-        obj.user().setLogin(obj.user().getLogin());
-        obj.user().setRole(UserRole.USER);
-        
-        User user = userDtoToEntity(obj.user());
-        user.setStatus(StatusConta.PENDENTE_VERIFICACAO);
-        usuarioComumPJ.setUser(user);
-
+        // Preparar e salvar o endereço primeiro
         Endereco endereco = enderecoService.saveAndReturnEntity(obj.endereco());
         usuarioComumPJ.setEndereco(endereco);
 
+        // Criar e configurar o User
+        UserDTO userDTO = obj.user();
+        userDTO.setPassword(authService.encryptPassword(userDTO.getPassword()));
+        userDTO.setRole(UserRole.USER);
+        
+        User user = userDtoToEntity(userDTO);
+        user.setStatus(StatusConta.PENDENTE_VERIFICACAO);
+        
+        // Associar o user ao usuário PJ
+        usuarioComumPJ.setUser(user);
+
+        // Salvar tudo
         usuarioComumPJRepository.save(usuarioComumPJ);
-        usuarioComumPJ.setId(usuarioComumPJ.getId());
+        
         return pjToDto(usuarioComumPJ);
-        } else {
-            throw new IllegalArgumentException("O documento deve ter 11 ou 14 dígitos.");
-        }
+    } else {
+        throw new IllegalArgumentException("O documento deve ter 11 ou 14 dígitos.");
     }
+}
 
     @Transactional
     public UsuarioComumPFDTO createPF(UsuarioComumPFDTO obj) {
