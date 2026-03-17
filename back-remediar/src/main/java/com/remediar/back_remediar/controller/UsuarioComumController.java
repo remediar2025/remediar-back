@@ -12,6 +12,8 @@ import com.remediar.back_remediar.producer.NotificationProducer;
 import com.remediar.back_remediar.service.TwoFactorAuthenticationService;
 import com.remediar.back_remediar.service.UsuarioComumService;
 import io.swagger.v3.oas.annotations.tags.Tag;
+
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -33,7 +35,7 @@ public class UsuarioComumController {
     private TwoFactorAuthenticationService twoFactorAuthenticationService;
 
     public UsuarioComumController(UsuarioComumService usuarioComumService, NotificationProducer notificationProducer,
-            TwoFactorAuthenticationService twoFactorAuthenticationService) {
+            @Autowired(required = false) TwoFactorAuthenticationService twoFactorAuthenticationService) {
         this.usuarioComumService = usuarioComumService;
         this.notificationProducer = notificationProducer;
         this.twoFactorAuthenticationService = twoFactorAuthenticationService;
@@ -145,11 +147,11 @@ public class UsuarioComumController {
     public ResponseEntity<String> verificarConta(@RequestParam String email, @RequestParam String codigo) {
         if (usuarioComumService.isVerificado(email)) {
             return ResponseEntity.badRequest().body("Conta já verificada.");
-        } else if (twoFactorAuthenticationService.validarCodigo(email, codigo)) {
+        } else if (twoFactorAuthenticationService != null
+                && twoFactorAuthenticationService.validarCodigo(email, codigo)) {
             usuarioComumService.ativarUsuario(email);
             return ResponseEntity.ok("Conta verificada com sucesso!");
         }
-
         return ResponseEntity.badRequest().body("Código inválido.");
     }
 
@@ -162,6 +164,10 @@ public class UsuarioComumController {
     public ResponseEntity<String> reenviarCodigo(@RequestParam String email) {
         if (usuarioComumService.isVerificado(email)) {
             return ResponseEntity.badRequest().body("Conta já verificada.");
+        }
+
+        if (twoFactorAuthenticationService == null) {
+            return ResponseEntity.status(503).body("Serviço de verificação temporariamente indisponível.");
         }
 
         String codigo = twoFactorAuthenticationService.gerarCodigo(email);
