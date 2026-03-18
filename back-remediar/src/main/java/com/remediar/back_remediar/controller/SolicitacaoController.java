@@ -4,13 +4,13 @@ import com.remediar.back_remediar.model.Solicitacao;
 import com.remediar.back_remediar.model.SolicitacaoDoacao;
 import com.remediar.back_remediar.model.SolicitacaoPedido;
 import com.remediar.back_remediar.model.dto.StatusRequestDTO;
-import com.remediar.back_remediar.model.dto.notificacoes.NotificationRequestDto;
-import com.remediar.back_remediar.model.dto.notificacoes.TipoCanal;
+// import com.remediar.back_remediar.model.dto.notificacoes.NotificationRequestDto;
+// import com.remediar.back_remediar.model.dto.notificacoes.TipoCanal;
 import com.remediar.back_remediar.model.dto.solicitacoes.*;
 import com.remediar.back_remediar.model.dto.usuarios.FuncionarioIdRequestDTO;
 import com.remediar.back_remediar.model.mapper.SolicitacaoDoacaoMapper;
 import com.remediar.back_remediar.model.mapper.SolicitacaoPedidoMapper;
-import com.remediar.back_remediar.producer.NotificationProducer;
+// import com.remediar.back_remediar.producer.NotificationProducer;
 import com.remediar.back_remediar.service.SolicitacaoService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.media.Content;
@@ -38,13 +38,13 @@ public class SolicitacaoController {
     private final SolicitacaoService solicitacaoService;
     private final SolicitacaoPedidoMapper solicitacaoPedidoMapper;
     private final SolicitacaoDoacaoMapper solicitacaoDoacaoMapper;
-    private final NotificationProducer notificationProducer;
+    // private final NotificationProducer notificationProducer;
 
-    public SolicitacaoController(SolicitacaoService solicitacaoService, SolicitacaoPedidoMapper solicitacaoPedidoMapper, SolicitacaoDoacaoMapper solicitacaoDoacaoMapper, NotificationProducer notificationProducer) {
+    public SolicitacaoController(SolicitacaoService solicitacaoService, SolicitacaoPedidoMapper solicitacaoPedidoMapper, SolicitacaoDoacaoMapper solicitacaoDoacaoMapper/*, NotificationProducer notificationProducer*/) {
         this.solicitacaoService = solicitacaoService;
         this.solicitacaoPedidoMapper = solicitacaoPedidoMapper;
         this.solicitacaoDoacaoMapper = solicitacaoDoacaoMapper;
-        this.notificationProducer = notificationProducer;
+        // this.notificationProducer = notificationProducer;
     }
 
 
@@ -109,18 +109,18 @@ public class SolicitacaoController {
                 .toUri();
 
 
-        NotificationRequestDto notificacao = new NotificationRequestDto(
-                pedido.solicitacao().usuario().id(),
-                "no-reply@remediar.com",
-                pedido.solicitacao().usuario().telefone(),
-                "📦 Pedido recebido com sucesso!",
-                "Sua solicitação de pedido do medicamento " + pedido.item().nomeComercialOrPrincipioAtivo() +  " foi registrada com sucesso. Em breve será processada. Código: " + pedido.solicitacao().id(),
-                TipoCanal.WHATSAPP,
-                pedido.solicitacao().id(),
-                "Pedido"
-        );
+        // NotificationRequestDto notificacao = new NotificationRequestDto(
+        //         pedido.solicitacao().usuario().id(),
+        //         "no-reply@remediar.com",
+        //         pedido.solicitacao().usuario().telefone(),
+        //         "📦 Pedido recebido com sucesso!",
+        //         "Sua solicitação de pedido do medicamento " + pedido.item().nomeComercialOrPrincipioAtivo() +  " foi registrada com sucesso. Em breve será processada. Código: " + pedido.solicitacao().id(),
+        //         TipoCanal.WHATSAPP,
+        //         pedido.solicitacao().id(),
+        //         "Pedido"
+        // );
 
-        notificationProducer.sendNotification(notificacao);
+        // notificationProducer.sendNotification(notificacao);
 
         return ResponseEntity.created(uri).body(pedido);
     }
