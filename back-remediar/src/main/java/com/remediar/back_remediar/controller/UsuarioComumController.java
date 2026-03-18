@@ -102,46 +102,32 @@ public class UsuarioComumController {
         return ResponseEntity.ok(usuarioComumDTOAtualizado);
     }
 
-    @PostMapping("/pf")
+       @PostMapping("/pf")
     public ResponseEntity<UsuarioComumPFDTO> createUsuarioComumPF(@Valid @RequestBody UsuarioComumPFDTO obj) {
+        UsuarioComumPFDTO newUsuario = usuarioComumService.createPF(obj);
 
-        try {
+        // String codigo =
+        // twoFactorAuthenticationService.gerarCodigo(obj.usuario().user().getLogin());
 
-            UsuarioComumPFDTO newUsuario = usuarioComumService.createPF(obj);
+        // notificationProducer.sendNotification(new NotificationRequestDto(
+        // newUsuario.usuario().id(),
+        // newUsuario.usuario().user().getLogin(),
+        // newUsuario.usuario().user().getLogin(),
+        // "Verificação de dois fatores",
+        // "Olá, " + newUsuario.usuario().nome()
+        // + "! Seja bem vindo(a) à Remediar!"
+        // + "\nSeu código de verificação é: " + codigo
+        // + "\nAtenção, este código é válido por 15 minutos."
+        // + "\nCaso não tenha solicitado, desconsidere esta mensagem.",
+        // TipoCanal.EMAIL
+        // ));
 
-            // String codigo =
-            // twoFactorAuthenticationService.gerarCodigo(obj.usuario().user().getLogin());
+        URI uri = ServletUriComponentsBuilder.fromCurrentRequest()
+                .path("/{id}")
+                .buildAndExpand(newUsuario.usuario().id())
+                .toUri();
 
-            // notificationProducer.sendNotification(new NotificationRequestDto(
-            // newUsuario.usuario().id(),
-            // newUsuario.usuario().user().getLogin(),
-            // newUsuario.usuario().user().getLogin(),
-            // "Verificação de dois fatores",
-            // "Olá, " + newUsuario.usuario().nome()
-            // + "! Seja bem vindo(a) à Remediar!"
-            // + "\nSeu código de verificação é: " + codigo
-            // + "\nAtenção, este código é válido por 15 minutos."
-            // + "\nCaso não tenha solicitado, desconsidere esta mensagem.",
-            // TipoCanal.EMAIL
-            // ));
-
-            URI uri = ServletUriComponentsBuilder.fromCurrentRequest()
-                    .path("/{id}")
-                    .buildAndExpand(newUsuario.usuario().id())
-                    .toUri();
-
-            return ResponseEntity.created(uri).body(newUsuario);
-
-        } catch (org.springframework.data.redis.RedisConnectionFailureException e) {
-            System.out.println("Falha ao conectar ao Redis para 2FA: " + e.getMessage());
-            // Se falhar por causa do Redis, ainda retorna sucesso pois o usuário foi criado
-            UsuarioComumPFDTO newUsuario = usuarioComumService.createPF(obj);
-            return ResponseEntity.ok(newUsuario);
-        } catch (Exception e) {
-            System.out.println("Erro inesperado ao criar usuário PF: " + e.getMessage());
-            // Outros erros continuam sendo lançados
-            throw e;
-        }
+        return ResponseEntity.created(uri).body(newUsuario);
     }
 
     @PutMapping("/pf/{id}")
