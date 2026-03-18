@@ -2,9 +2,9 @@ package com.remediar.back_remediar.service;
 
 import com.remediar.back_remediar.model.Historico;
 import com.remediar.back_remediar.model.Solicitacao;
-import com.remediar.back_remediar.model.dto.notificacoes.NotificationRequestDto;
-import com.remediar.back_remediar.model.dto.notificacoes.TipoCanal;
-import com.remediar.back_remediar.producer.NotificationProducer;
+// import com.remediar.back_remediar.model.dto.notificacoes.NotificationRequestDto;
+// import com.remediar.back_remediar.model.dto.notificacoes.TipoCanal;
+// import com.remediar.back_remediar.producer.NotificationProducer;
 import com.remediar.back_remediar.repository.HistoricoRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -15,11 +15,11 @@ import java.time.LocalDateTime;
 public class HistoricoService {
 
     private final HistoricoRepository historicoRepository;
-    private final NotificationProducer notificationProducer;
+    // private final NotificationProducer notificationProducer;
 
-    public HistoricoService(HistoricoRepository historicoRepository, NotificationProducer notificationProducer) {
+    public HistoricoService(HistoricoRepository historicoRepository/*, NotificationProducer notificationProducer*/) {
         this.historicoRepository = historicoRepository;
-        this.notificationProducer = notificationProducer;
+        // this.notificationProducer = notificationProducer;
     }
 
     @Transactional
@@ -32,62 +32,62 @@ public class HistoricoService {
         historico.setFuncionario(solicitacao.getFuncionarioResponsavelAtual());
         historicoRepository.save(historico);
 
-        String titulo = "";
-        String mensagem = "";
-        String tipoSolicitacao = solicitacao.getTipoSolicitacao().getDescricao();
+        // String titulo = "";
+        // String mensagem = "";
+        // String tipoSolicitacao = solicitacao.getTipoSolicitacao().getDescricao();
 
-        if (observacao.toUpperCase().contains("CRIADA")) {
-            titulo = "Criação de Solicitação";
-            mensagem = "Olá, " + historico.getSolicitacao().getUsuarioComum().getNome()
-                    + "\nSua solicitação de código: " + historico.getSolicitacao().getId() + " foi criada."
-                    + "\nCaso não tenha solicitado, desconsidere esta mensagem.";
-        }
+        // if (observacao.toUpperCase().contains("CRIADA")) {
+        //     titulo = "Criação de Solicitação";
+        //     mensagem = "Olá, " + historico.getSolicitacao().getUsuarioComum().getNome()
+        //             + "\nSua solicitação de código: " + historico.getSolicitacao().getId() + " foi criada."
+        //             + "\nCaso não tenha solicitado, desconsidere esta mensagem.";
+        // }
 
-        if (observacao.toUpperCase().contains("APROVADA")) {
-            titulo = "Aprovação de Solicitação";
-            mensagem = "Olá, " + historico.getSolicitacao().getUsuarioComum().getNome()
-                    + "! Sua solicitação de " + tipoSolicitacao + ", de código: " + historico.getSolicitacao().getId() + " foi aprovada."
-                    + "\nAguarde a separação dos itens.";
-        }
+        // if (observacao.toUpperCase().contains("APROVADA")) {
+        //     titulo = "Aprovação de Solicitação";
+        //     mensagem = "Olá, " + historico.getSolicitacao().getUsuarioComum().getNome()
+        //             + "! Sua solicitação de " + tipoSolicitacao + ", de código: " + historico.getSolicitacao().getId() + " foi aprovada."
+        //             + "\nAguarde a separação dos itens.";
+        // }
 
-        if (observacao.toUpperCase().contains("CANCELADA")) {
-            titulo = "Cancelamento de Solicitação";
-            mensagem = "Olá, " + historico.getSolicitacao().getUsuarioComum().getNome()
-                    + "! Sua solicitação de " + tipoSolicitacao + ", de código: " + historico.getSolicitacao().getId() + " foi cancelada."
-                    + "\nCaso não tenha solicitado, desconsidere esta mensagem.";
-        }
+        // if (observacao.toUpperCase().contains("CANCELADA")) {
+        //     titulo = "Cancelamento de Solicitação";
+        //     mensagem = "Olá, " + historico.getSolicitacao().getUsuarioComum().getNome()
+        //             + "! Sua solicitação de " + tipoSolicitacao + ", de código: " + historico.getSolicitacao().getId() + " foi cancelada."
+        //             + "\nCaso não tenha solicitado, desconsidere esta mensagem.";
+        // }
 
-        if (observacao.toUpperCase().contains("SEPARADA")) {
-            titulo = "Separação de Solicitação";
-            mensagem = "Olá, " + historico.getSolicitacao().getUsuarioComum().getNome()
-                    + "! Sua solicitação de" + tipoSolicitacao + ", de código: " + historico.getSolicitacao().getId() + " foi separada."
-                    + "\nAguarde a retirada dos itens.";
-        }
+        // if (observacao.toUpperCase().contains("SEPARADA")) {
+        //     titulo = "Separação de Solicitação";
+        //     mensagem = "Olá, " + historico.getSolicitacao().getUsuarioComum().getNome()
+        //             + "! Sua solicitação de" + tipoSolicitacao + ", de código: " + historico.getSolicitacao().getId() + " foi separada."
+        //             + "\nAguarde a retirada dos itens.";
+        // }
 
-        if (observacao.toUpperCase().contains("AGUARDANDO")) {
-            titulo = "Aguardando Resposta";
-            mensagem = "Olá, " + historico.getSolicitacao().getUsuarioComum().getNome()
-                    + "! Sua solicitação de" + tipoSolicitacao + ", código: " + historico.getSolicitacao().getId() + " está aguardando sua resposta."
-                    + "\nPor favor, responda o mais breve possível.";
-        }
+        // if (observacao.toUpperCase().contains("AGUARDANDO")) {
+        //     titulo = "Aguardando Resposta";
+        //     mensagem = "Olá, " + historico.getSolicitacao().getUsuarioComum().getNome()
+        //             + "! Sua solicitação de" + tipoSolicitacao + ", código: " + historico.getSolicitacao().getId() + " está aguardando sua resposta."
+        //             + "\nPor favor, responda o mais breve possível.";
+        // }
 
-        if (observacao.toUpperCase().contains("FINALIZADA")) {
-            titulo = "Finalização de Solicitação";
-            mensagem = "Olá, " + historico.getSolicitacao().getUsuarioComum().getNome()
-                    + "! Sua solicitação de" + tipoSolicitacao + ", código: " + historico.getSolicitacao().getId() + " foi finalizada."
-                    + "\nObrigado por utilizar a Remediar!";
-        }
+        // if (observacao.toUpperCase().contains("FINALIZADA")) {
+        //     titulo = "Finalização de Solicitação";
+        //     mensagem = "Olá, " + historico.getSolicitacao().getUsuarioComum().getNome()
+        //             + "! Sua solicitação de" + tipoSolicitacao + ", código: " + historico.getSolicitacao().getId() + " foi finalizada."
+        //             + "\nObrigado por utilizar a Remediar!";
+        // }
 
-        if (!titulo.isEmpty()) {
-            notificationProducer.sendNotification(new NotificationRequestDto(
-                    historico.getSolicitacao().getUsuarioComum().getId(),
-                    historico.getSolicitacao().getUsuarioComum().getUser().getLogin(),
-                    historico.getSolicitacao().getUsuarioComum().getUser().getLogin(),
-                    titulo,
-                    mensagem,
-                    TipoCanal.EMAIL
-            ));
-        }
+        // if (!titulo.isEmpty()) {
+        //     notificationProducer.sendNotification(new NotificationRequestDto(
+        //             historico.getSolicitacao().getUsuarioComum().getId(),
+        //             historico.getSolicitacao().getUsuarioComum().getUser().getLogin(),
+        //             historico.getSolicitacao().getUsuarioComum().getUser().getLogin(),
+        //             titulo,
+        //             mensagem,
+        //             TipoCanal.EMAIL
+        //     ));
+        // }
 
         //TODO
         // fila-solicitacao.pedido-create (Status.PENDENTE) -> email E zap consomem
