@@ -133,10 +133,12 @@ public class UsuarioComumController {
             return ResponseEntity.created(uri).body(newUsuario);
 
         } catch (org.springframework.data.redis.RedisConnectionFailureException e) {
+            System.out.println("Falha ao conectar ao Redis para 2FA: " + e.getMessage());
             // Se falhar por causa do Redis, ainda retorna sucesso pois o usuário foi criado
             UsuarioComumPFDTO newUsuario = usuarioComumService.createPF(obj);
             return ResponseEntity.ok(newUsuario);
         } catch (Exception e) {
+            System.out.println("Erro inesperado ao criar usuário PF: " + e.getMessage());
             // Outros erros continuam sendo lançados
             throw e;
         }
