@@ -18,6 +18,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 
 @Service
@@ -188,7 +189,7 @@ public class SolicitacaoService {
     @Transactional
     public DoacaoResponseDTO criarSolicitacaoDoacao(DoacaoRequestDTO obj) {
 
-        if(obj.itens() == null || obj.itens().isEmpty()) {
+        if (obj.itens() == null || obj.itens().isEmpty()) {
             throw new ObjectNotFoundException("Nenhum item encontrado na solicitação de doação");
         }
 
@@ -354,7 +355,7 @@ public class SolicitacaoService {
             historico = historicoService.saveHistorico(solicitacao, "Funcionário(a) " + funcionario.getNome() + " assumiu a solicitação.");
         } else {
             solicitacao.setFuncionarioResponsavelAtual(funcionario);
-            historico = historicoService.saveHistorico(solicitacao,"Funcionário(a) responsável atualizado para " + funcionario.getNome() + ".");
+            historico = historicoService.saveHistorico(solicitacao, "Funcionário(a) responsável atualizado para " + funcionario.getNome() + ".");
         }
 
         historicoRepository.save(historico);
@@ -391,6 +392,41 @@ public class SolicitacaoService {
         if (solicitacao.getStatusAtual() == Status.APROVADA) {
             throw new IllegalStateException("Solicitação já está aprovada");
         }
+
+        // BAIXA NO ESTOQUE
+    if (solicitacao instanceof SolicitacaoPedido pedido) {
+        ItemSolicitacaoPedido itemPedido = pedido.getItemSolicitacaoPedido();
+        
+        if (itemPedido != null) {
+            Produto produto = itemPedido.getProduto();
+            int quantidadeSolicitada = itemPedido.getQuantidade();
+            
+            Optional<ItemEstoque> itemEstoqueOpt = itemEstoqueService.findByProduto(produto);
+            
+            if (itemEstoqueOpt.isEmpty()) {
+                throw new IllegalStateException(
+                    "Produto '" + produto.getNomeComercial() + "' não encontrado no estoque"
+                );
+            }
+            
+            ItemEstoque itemEstoque = itemEstoqueOpt.get();
+            
+            if (itemEstoque.getQuantidade() < quantidadeSolicitada) {
+                throw new IllegalStateException(
+                    "Estoque insuficiente para o produto '" + produto.getNomeComercial() + 
+                    "'. Disponível: " + itemEstoque.getQuantidade() + 
+                    ", Solicitado: " + quantidadeSolicitada
+                );
+            }
+
+            System.out.println("Baixando estoque para produto '" + produto.getNomeComercial() + 
+                "'. Quantidade atual: " + itemEstoque.getQuantidade() + 
+                ", Quantidade solicitada: " + quantidadeSolicitada);
+            
+            int novaQuantidade = itemEstoque.getQuantidade() - quantidadeSolicitada;
+            itemEstoqueService.atualizarQuantidade(itemEstoque.getId(), novaQuantidade);
+        }
+    }
 
 
         solicitacao.setStatusAtual(Status.APROVADA);

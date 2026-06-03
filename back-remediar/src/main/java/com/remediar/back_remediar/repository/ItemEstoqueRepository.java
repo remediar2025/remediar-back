@@ -10,6 +10,7 @@ import org.springframework.stereotype.Repository;
 import com.remediar.back_remediar.model.ItemEstoque;
 
 import java.time.LocalDate;
+import java.util.Optional;
 
 @Repository
 public interface ItemEstoqueRepository extends JpaRepository<ItemEstoque, Long> {
@@ -17,4 +18,7 @@ public interface ItemEstoqueRepository extends JpaRepository<ItemEstoque, Long> 
     ItemEstoque findByProdutoAndEstoqueAndDataValidade(Produto produto, Estoque estoque, LocalDate localDate);
     
     Page<ItemEstoque> findByEstoqueId(Long estoqueId, Pageable pageable);
+
+    Optional<ItemEstoque> findByProduto(Produto produto);
+
 }

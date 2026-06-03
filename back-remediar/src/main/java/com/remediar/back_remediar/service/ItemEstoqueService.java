@@ -16,6 +16,8 @@ import com.remediar.back_remediar.repository.EstoqueRepository;
 import com.remediar.back_remediar.repository.ItemEstoqueRepository;
 import com.remediar.back_remediar.repository.ProdutoRepository;
 
+import java.util.Optional;
+
 @Service
 public class ItemEstoqueService {
 
@@ -38,6 +40,11 @@ public class ItemEstoqueService {
     public ItemEstoque findById(Long id) {
         return itemEstoqueRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Item de estoque não encontrado."));
+    }
+
+    @Transactional(readOnly = true)
+    public Optional<ItemEstoque> findByProduto(Produto produto) {
+        return itemEstoqueRepository.findByProduto(produto);
     }
 
     @Transactional(readOnly = true)
@@ -102,7 +109,17 @@ public class ItemEstoqueService {
     itemEstoqueRepository.save(item);
     return itemEstoqueMapper.toDTO(item);
     }
-    
+
+    @Transactional
+    public ItemEstoqueDTO atualizarQuantidade(Long id, int novaQuantidade) {
+        ItemEstoque item = itemEstoqueRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Item de estoque não encontrado"));
+
+        item.setQuantidade(novaQuantidade);
+        itemEstoqueRepository.save(item);
+        return itemEstoqueMapper.toDTO(item);
+    }
+
 
     @Transactional
     public void delete(Long id) {
