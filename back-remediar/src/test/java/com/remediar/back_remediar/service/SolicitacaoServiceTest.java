@@ -14,11 +14,15 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
+import org.mockito.MockedStatic;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContext;
+import org.springframework.security.core.context.SecurityContextHolder;
 
 import java.time.LocalDateTime;
 import java.util.*;
@@ -73,9 +77,6 @@ class SolicitacaoServiceTest {
     private HistoricoService historicoService;
 
     @Mock
-    private FuncionarioService funcionarioService;
-
-    @Mock
     private ItemEstoqueService itemEstoqueService;
 
     @Mock
@@ -94,6 +95,22 @@ class SolicitacaoServiceTest {
         solicitacaoPedido.setStatusAtual(Status.PENDENTE);
 
         pedidoResponseDTO = mock(PedidoResponseDTO.class);
+    }
+
+    private MockedStatic<SecurityContextHolder> mockUsuarioLogado(UserRole role) {
+        User usuarioLogado = new User();
+        usuarioLogado.setLogin("usuario.teste");
+        usuarioLogado.setRole(role);
+
+        Authentication authentication = mock(Authentication.class);
+        when(authentication.getPrincipal()).thenReturn(usuarioLogado);
+
+        SecurityContext securityContext = mock(SecurityContext.class);
+        when(securityContext.getAuthentication()).thenReturn(authentication);
+
+        MockedStatic<SecurityContextHolder> mockedSecurityContextHolder = mockStatic(SecurityContextHolder.class);
+        mockedSecurityContextHolder.when(SecurityContextHolder::getContext).thenReturn(securityContext);
+        return mockedSecurityContextHolder;
     }
 
     @Test
@@ -204,20 +221,61 @@ class SolicitacaoServiceTest {
         Long funcionarioId = 1L;
         Funcionario funcionario = new Funcionario();
         funcionario.setId(funcionarioId);
+        solicitacaoPedido.setFuncionarioResponsavelAtual(funcionario);
 
         when(solicitacaoRepository.findById(solicitacaoId)).thenReturn(Optional.of(solicitacaoPedido));
         when(funcionarioRepository.findById(funcionarioId)).thenReturn(Optional.of(funcionario));
         when(historicoService.saveHistorico(any(), any())).thenReturn(new Historico());
 
         // Act
-        solicitacaoService.aprovarSolicitacao(solicitacaoId, funcionarioId);
+        try (MockedStatic<SecurityContextHolder> ignored = mockUsuarioLogado(UserRole.FUNCIONARIO)) {
+            solicitacaoService.aprovarSolicitacao(solicitacaoId, funcionarioId);
+        }
 
         // Assert
         assertEquals(Status.APROVADA, solicitacaoPedido.getStatusAtual());
         assertEquals(funcionario, solicitacaoPedido.getFuncionarioResponsavelAtual());
         verify(solicitacaoRepository).findById(solicitacaoId);
         verify(funcionarioRepository).findById(funcionarioId);
-        verify(solicitacaoRepository).save(solicitacaoPedido);
+        verify(solicitacaoRepository, atLeastOnce()).save(solicitacaoPedido);
+    }
+
+    @Test
+    void aprovarSolicitacao_WithFuncionarioNaoEncontrado_ShouldThrow() {
+        // Arrange - regressão: comportamento de FUNCIONARIO não deve mudar
+        UUID solicitacaoId = UUID.randomUUID();
+        Long funcionarioId = 1L;
+        solicitacaoPedido.setFuncionarioResponsavelAtual(new Funcionario());
+
+        when(solicitacaoRepository.findById(solicitacaoId)).thenReturn(Optional.of(solicitacaoPedido));
+        when(funcionarioRepository.findById(funcionarioId)).thenReturn(Optional.empty());
+
+        // Act & Assert
+        try (MockedStatic<SecurityContextHolder> ignored = mockUsuarioLogado(UserRole.FUNCIONARIO)) {
+            assertThrows(RuntimeException.class, () -> solicitacaoService.aprovarSolicitacao(solicitacaoId, funcionarioId));
+        }
+        verify(solicitacaoRepository, never()).save(any());
+    }
+
+    @Test
+    void aprovarSolicitacao_AsAdminWithoutFuncionario_ShouldApproveAnyway() {
+        // Arrange - ADMIN sem funcionário vinculado e solicitação ainda não reivindicada
+        UUID solicitacaoId = UUID.randomUUID();
+        Long funcionarioId = 999L;
+
+        when(solicitacaoRepository.findById(solicitacaoId)).thenReturn(Optional.of(solicitacaoPedido));
+        when(funcionarioRepository.findById(funcionarioId)).thenReturn(Optional.empty());
+        when(historicoService.saveHistorico(any(), any())).thenReturn(new Historico());
+
+        // Act
+        try (MockedStatic<SecurityContextHolder> ignored = mockUsuarioLogado(UserRole.ADMIN)) {
+            solicitacaoService.aprovarSolicitacao(solicitacaoId, funcionarioId);
+        }
+
+        // Assert
+        assertEquals(Status.APROVADA, solicitacaoPedido.getStatusAtual());
+        assertNull(solicitacaoPedido.getFuncionarioResponsavelAtual());
+        verify(solicitacaoRepository, atLeastOnce()).save(solicitacaoPedido);
     }
 
     @Test
@@ -227,19 +285,60 @@ class SolicitacaoServiceTest {
         Long funcionarioId = 1L;
         Funcionario funcionario = new Funcionario();
         funcionario.setId(funcionarioId);
+        solicitacaoPedido.setFuncionarioResponsavelAtual(funcionario);
 
         when(solicitacaoRepository.findById(solicitacaoId)).thenReturn(Optional.of(solicitacaoPedido));
         when(funcionarioRepository.findById(funcionarioId)).thenReturn(Optional.of(funcionario));
         when(historicoService.saveHistorico(any(), any())).thenReturn(new Historico());
 
         // Act
-        solicitacaoService.cancelarSolicitacao(solicitacaoId, funcionarioId);
+        try (MockedStatic<SecurityContextHolder> ignored = mockUsuarioLogado(UserRole.FUNCIONARIO)) {
+            solicitacaoService.cancelarSolicitacao(solicitacaoId, funcionarioId);
+        }
 
         // Assert
         assertEquals(Status.CANCELADA, solicitacaoPedido.getStatusAtual());
         assertEquals(funcionario, solicitacaoPedido.getFuncionarioResponsavelAtual());
         verify(solicitacaoRepository).findById(solicitacaoId);
         verify(funcionarioRepository).findById(funcionarioId);
-        verify(solicitacaoRepository).save(solicitacaoPedido);
+        verify(solicitacaoRepository, atLeastOnce()).save(solicitacaoPedido);
+    }
+
+    @Test
+    void updateFuncionarioResponsavelAtual_AsAdminWithoutFuncionario_ShouldClaimSolicitacao() {
+        // Arrange
+        UUID solicitacaoId = UUID.randomUUID();
+        Long funcionarioId = 999L;
+
+        when(solicitacaoRepository.findById(solicitacaoId)).thenReturn(Optional.of(solicitacaoPedido));
+        when(funcionarioRepository.findById(funcionarioId)).thenReturn(Optional.empty());
+        when(historicoService.saveHistorico(any(), any())).thenReturn(new Historico());
+
+        // Act
+        try (MockedStatic<SecurityContextHolder> ignored = mockUsuarioLogado(UserRole.ADMIN)) {
+            solicitacaoService.updateFuncionarioResponsavelAtual(solicitacaoId, funcionarioId);
+        }
+
+        // Assert
+        assertEquals(Status.EM_ANALISE, solicitacaoPedido.getStatusAtual());
+        assertNull(solicitacaoPedido.getFuncionarioResponsavelAtual());
+    }
+
+    @Test
+    void updateFuncionarioResponsavelAtual_AsAdminWithoutFuncionario_CalledTwice_ShouldThrowOnSecondCall() {
+        // Arrange
+        UUID solicitacaoId = UUID.randomUUID();
+        Long funcionarioId = 999L;
+
+        when(solicitacaoRepository.findById(solicitacaoId)).thenReturn(Optional.of(solicitacaoPedido));
+        when(funcionarioRepository.findById(funcionarioId)).thenReturn(Optional.empty());
+        when(historicoService.saveHistorico(any(), any())).thenReturn(new Historico());
+
+        // Act & Assert
+        try (MockedStatic<SecurityContextHolder> ignored = mockUsuarioLogado(UserRole.ADMIN)) {
+            solicitacaoService.updateFuncionarioResponsavelAtual(solicitacaoId, funcionarioId);
+            assertThrows(IllegalStateException.class,
+                    () -> solicitacaoService.updateFuncionarioResponsavelAtual(solicitacaoId, funcionarioId));
+        }
     }
 } 

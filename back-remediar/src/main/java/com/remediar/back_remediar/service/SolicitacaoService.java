@@ -12,6 +12,8 @@ import com.remediar.back_remediar.repository.*;
 import com.remediar.back_remediar.service.exceptions.ObjectNotFoundException;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -38,7 +40,6 @@ public class SolicitacaoService {
     private final FuncionarioRepository funcionarioRepository;
     private final HistoricoRepository historicoRepository;
     private final HistoricoService historicoService;
-    private final FuncionarioService funcionarioService;
     private final ItemEstoqueService itemEstoqueService;
     private final ItemEstoqueMapper itemEstoqueMapper;
 
@@ -53,7 +54,7 @@ public class SolicitacaoService {
                               ItemSolicitacaoDoacaoRepository itemSolicitacaoDoacaoRepository,
                               SolicitacaoPedidoMapper solicitacaoPedidoMapper,
                               SolicitacaoMapper solicitacaoMapper,
-                              FuncionarioRepository funcionarioRepository, HistoricoRepository historicoRepository, HistoricoService historicoService, FuncionarioService funcionarioService, ItemEstoqueService itemEstoqueService, ItemEstoqueMapper itemEstoqueMapper) {
+                              FuncionarioRepository funcionarioRepository, HistoricoRepository historicoRepository, HistoricoService historicoService, ItemEstoqueService itemEstoqueService, ItemEstoqueMapper itemEstoqueMapper) {
         this.solicitacaoPedidoRepository = solicitacaoPedidoRepository;
         this.produtoService = produtoService;
         this.itemSolicitacaoPedidoRepository = itemSolicitacaoPedidoRepository;
@@ -68,7 +69,6 @@ public class SolicitacaoService {
         this.funcionarioRepository = funcionarioRepository;
         this.historicoRepository = historicoRepository;
         this.historicoService = historicoService;
-        this.funcionarioService = funcionarioService;
         this.itemEstoqueService = itemEstoqueService;
         this.itemEstoqueMapper = itemEstoqueMapper;
     }
@@ -333,13 +333,35 @@ public class SolicitacaoService {
                 .toList();
     }
 
+    private User getUsuarioLogado() {
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        return (User) authentication.getPrincipal();
+    }
+
+    private Funcionario resolveFuncionario(Long funcionarioId, boolean isAdmin) {
+        Funcionario funcionario = funcionarioRepository.findById(funcionarioId).orElse(null);
+        if (funcionario == null && !isAdmin) {
+            throw new RuntimeException("Funcionário não encontrado");
+        }
+        return funcionario;
+    }
+
     @Transactional
     public void updateFuncionarioResponsavelAtual(UUID solicitacaoId, Long funcionarioId) {
         Solicitacao solicitacao = findById(solicitacaoId);
-        Funcionario funcionario = funcionarioRepository.findById(funcionarioId)
-                .orElseThrow(() -> new ObjectNotFoundException("Funcionário(a) não encontrado(a)."));
+        User usuarioLogado = getUsuarioLogado();
+        boolean isAdmin = usuarioLogado.getRole() == UserRole.ADMIN;
+        Funcionario funcionario = resolveFuncionario(funcionarioId, isAdmin);
 
-        if (solicitacao.getFuncionarioResponsavelAtual() == funcionario) {
+        boolean jaAssumidaPorAdminSemFuncionario = funcionario == null
+                && solicitacao.getFuncionarioResponsavelAtual() == null
+                && solicitacao.getStatusAtual() == Status.EM_ANALISE;
+
+        if (jaAssumidaPorAdminSemFuncionario) {
+            throw new IllegalStateException("Solicitação já foi assumida.");
+        }
+
+        if (funcionario != null && solicitacao.getFuncionarioResponsavelAtual() == funcionario) {
             throw new IllegalStateException("Funcionário(a) já é responsável atual pela solicitação.");
         }
 
@@ -349,13 +371,19 @@ public class SolicitacaoService {
         Historico historico;
 
         if (solicitacao.getFuncionarioResponsavelAtual() == null) {
-            solicitacao.setFuncionarioResponsavelAtual(funcionario);
+            if (funcionario != null) {
+                solicitacao.setFuncionarioResponsavelAtual(funcionario);
+            }
             solicitacao.setStatusAtual(Status.EM_ANALISE);
             solicitacaoRepository.save(solicitacao);
-            historico = historicoService.saveHistorico(solicitacao, "Funcionário(a) " + funcionario.getNome() + " assumiu a solicitação.");
+            String quemAssumiu = funcionario != null ? "Funcionário(a) " + funcionario.getNome() : "Administrador(a)";
+            historico = historicoService.saveHistorico(solicitacao, quemAssumiu + " assumiu a solicitação.");
         } else {
-            solicitacao.setFuncionarioResponsavelAtual(funcionario);
-            historico = historicoService.saveHistorico(solicitacao, "Funcionário(a) responsável atualizado para " + funcionario.getNome() + ".");
+            if (funcionario != null) {
+                solicitacao.setFuncionarioResponsavelAtual(funcionario);
+            }
+            String quemAtualizou = funcionario != null ? "Funcionário(a) " + funcionario.getNome() : "Administrador(a)";
+            historico = historicoService.saveHistorico(solicitacao, "Responsável atualizado para " + quemAtualizou + ".");
         }
 
         historicoRepository.save(historico);
@@ -383,9 +411,11 @@ public class SolicitacaoService {
     @Transactional
     public void aprovarSolicitacao(UUID solicitacaoId, Long funcionarioId) {
         Solicitacao solicitacao = findById(solicitacaoId);
-        Funcionario funcionario = funcionarioService.getById(funcionarioId);
+        User usuarioLogado = getUsuarioLogado();
+        boolean isAdmin = usuarioLogado.getRole() == UserRole.ADMIN;
+        Funcionario funcionario = resolveFuncionario(funcionarioId, isAdmin);
 
-        if (solicitacao.getFuncionarioResponsavelAtual() == null) {
+        if (solicitacao.getFuncionarioResponsavelAtual() == null && !isAdmin) {
             throw new IllegalStateException("Funcionário(a) responsável não encontrado");
         }
 
@@ -430,7 +460,9 @@ public class SolicitacaoService {
 
 
         solicitacao.setStatusAtual(Status.APROVADA);
-        solicitacao.setFuncionarioResponsavelAtual(funcionario);
+        if (funcionario != null) {
+            solicitacao.setFuncionarioResponsavelAtual(funcionario);
+        }
         solicitacao.setDataHoraUltimaAtualizacao(LocalDateTime.now());
         solicitacaoRepository.save(solicitacao);
 
@@ -442,9 +474,11 @@ public class SolicitacaoService {
     @Transactional
     public void cancelarSolicitacao(UUID solicitacaoId, Long funcionarioId) {
         Solicitacao solicitacao = findById(solicitacaoId);
-        Funcionario funcionario = funcionarioService.getById(funcionarioId);
+        User usuarioLogado = getUsuarioLogado();
+        boolean isAdmin = usuarioLogado.getRole() == UserRole.ADMIN;
+        Funcionario funcionario = resolveFuncionario(funcionarioId, isAdmin);
 
-        if (solicitacao.getFuncionarioResponsavelAtual() == null) {
+        if (solicitacao.getFuncionarioResponsavelAtual() == null && !isAdmin) {
             throw new IllegalStateException("Funcionário(a) responsável não encontrado");
         }
 
@@ -453,7 +487,9 @@ public class SolicitacaoService {
         }
 
         solicitacao.setStatusAtual(Status.CANCELADA);
-        solicitacao.setFuncionarioResponsavelAtual(funcionario);
+        if (funcionario != null) {
+            solicitacao.setFuncionarioResponsavelAtual(funcionario);
+        }
         solicitacao.setDataHoraUltimaAtualizacao(LocalDateTime.now());
         solicitacao.setDataHoraFinalizacao(LocalDateTime.now());
         solicitacaoRepository.save(solicitacao);
@@ -466,9 +502,11 @@ public class SolicitacaoService {
     @Transactional
     public void separarSolicitacao(UUID solicitacaoId, Long funcionarioId) {
         Solicitacao solicitacao = findById(solicitacaoId);
-        Funcionario funcionario = funcionarioService.getById(funcionarioId);
+        User usuarioLogado = getUsuarioLogado();
+        boolean isAdmin = usuarioLogado.getRole() == UserRole.ADMIN;
+        Funcionario funcionario = resolveFuncionario(funcionarioId, isAdmin);
 
-        if (solicitacao.getFuncionarioResponsavelAtual() == null) {
+        if (solicitacao.getFuncionarioResponsavelAtual() == null && !isAdmin) {
             throw new IllegalStateException("Funcionário(a) responsável não encontrado");
         }
 
@@ -478,7 +516,9 @@ public class SolicitacaoService {
 
         if (solicitacao.getStatusAtual() == Status.APROVADA) {
             solicitacao.setStatusAtual(Status.SEPARADA);
-            solicitacao.setFuncionarioResponsavelAtual(funcionario);
+            if (funcionario != null) {
+                solicitacao.setFuncionarioResponsavelAtual(funcionario);
+            }
             solicitacao.setDataHoraUltimaAtualizacao(LocalDateTime.now());
             solicitacaoRepository.save(solicitacao);
 
@@ -494,8 +534,10 @@ public class SolicitacaoService {
     public void prontoParaRetirarSolicitacao(UUID solicitacaoId, Long funcionarioId) {
 
         Solicitacao solicitacao = findById(solicitacaoId);
+        User usuarioLogado = getUsuarioLogado();
+        boolean isAdmin = usuarioLogado.getRole() == UserRole.ADMIN;
 
-        if (solicitacao.getFuncionarioResponsavelAtual() == null) {
+        if (solicitacao.getFuncionarioResponsavelAtual() == null && !isAdmin) {
             throw new IllegalStateException("Funcionário(a) responsável não encontrado");
         }
 
@@ -503,7 +545,7 @@ public class SolicitacaoService {
             throw new IllegalStateException("Solicitação já está AGUARDANDO_RETIRADA");
         }
 
-        Funcionario funcionario = funcionarioService.getById(funcionarioId);
+        Funcionario funcionario = resolveFuncionario(funcionarioId, isAdmin);
 
         if (solicitacao.getStatusAtual() == Status.SEPARADA) {
 
@@ -513,7 +555,9 @@ public class SolicitacaoService {
                 solicitacao.setStatusAtual(Status.AGUARDANDO_RETIRADA);
             }
 
-            solicitacao.setFuncionarioResponsavelAtual(funcionario);
+            if (funcionario != null) {
+                solicitacao.setFuncionarioResponsavelAtual(funcionario);
+            }
             solicitacao.setDataHoraUltimaAtualizacao(LocalDateTime.now());
             solicitacaoRepository.save(solicitacao);
 
@@ -528,9 +572,11 @@ public class SolicitacaoService {
     @Transactional
     public void concluirSolicitacao(UUID solicitacaoId, Long funcionarioId) {
         Solicitacao solicitacao = findById(solicitacaoId);
-        Funcionario funcionario = funcionarioService.getById(funcionarioId);
+        User usuarioLogado = getUsuarioLogado();
+        boolean isAdmin = usuarioLogado.getRole() == UserRole.ADMIN;
+        Funcionario funcionario = resolveFuncionario(funcionarioId, isAdmin);
 
-        if (solicitacao.getFuncionarioResponsavelAtual() == null) {
+        if (solicitacao.getFuncionarioResponsavelAtual() == null && !isAdmin) {
             throw new IllegalStateException("Funcionário(a) responsável não encontrado");
         }
 
@@ -539,7 +585,9 @@ public class SolicitacaoService {
         }
 
             solicitacao.setStatusAtual(Status.CONCLUIDA);
-            solicitacao.setFuncionarioResponsavelAtual(funcionario);
+            if (funcionario != null) {
+                solicitacao.setFuncionarioResponsavelAtual(funcionario);
+            }
             solicitacao.setDataHoraUltimaAtualizacao(LocalDateTime.now());
             solicitacao.setDataHoraFinalizacao(LocalDateTime.now());
             solicitacaoRepository.save(solicitacao);
