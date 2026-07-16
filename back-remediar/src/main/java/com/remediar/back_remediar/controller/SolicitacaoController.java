@@ -73,8 +73,17 @@ public class SolicitacaoController {
             @ApiResponse(responseCode = "200", description = "Lista de pedidos retornada com sucesso.")
     })
     @GetMapping("/pedidos")
-    public ResponseEntity<Page<PedidoResponseDTO>> findAllPedidos(Pageable pageable) {
-        Page<PedidoResponseDTO> solicitacoes = solicitacaoService.findAllPedidos(pageable);
+    public ResponseEntity<Page<PedidoResponseDTO>> findAllPedidos(
+            @RequestParam(required = false) String id,
+            @RequestParam(required = false) String nomeSolicitante,
+            @RequestParam(required = false) String medicamento,
+            @RequestParam(required = false) String dataSolicitacaoInicio,
+            @RequestParam(required = false) String dataSolicitacaoFim,
+            @RequestParam(required = false) String status,
+            Pageable pageable
+    ) {
+        Page<PedidoResponseDTO> solicitacoes = solicitacaoService.findAllPedidos(
+                pageable, id, nomeSolicitante, medicamento, dataSolicitacaoInicio, dataSolicitacaoFim, status);
         return ResponseEntity.ok(solicitacoes);
     }
 

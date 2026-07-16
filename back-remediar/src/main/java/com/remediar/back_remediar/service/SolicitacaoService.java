@@ -9,16 +9,23 @@ import com.remediar.back_remediar.model.mapper.SolicitacaoDoacaoMapper;
 import com.remediar.back_remediar.model.mapper.SolicitacaoMapper;
 import com.remediar.back_remediar.model.mapper.SolicitacaoPedidoMapper;
 import com.remediar.back_remediar.repository.*;
+import com.remediar.back_remediar.repository.specification.SolicitacaoPedidoSpecification;
 import com.remediar.back_remediar.service.exceptions.ObjectNotFoundException;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.jpa.domain.Specification;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.util.StringUtils;
 
+import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
+import java.time.format.DateTimeParseException;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -80,9 +87,57 @@ public class SolicitacaoService {
     }
 
     @Transactional(readOnly = true)
-    public Page<PedidoResponseDTO> findAllPedidos(Pageable pageable) {
-        Page<SolicitacaoPedido> solicitacoes = solicitacaoPedidoRepository.findAll(pageable);
+    public Page<PedidoResponseDTO> findAllPedidos(Pageable pageable, String id, String nomeSolicitante,
+                                                   String medicamento, String dataSolicitacaoInicio,
+                                                   String dataSolicitacaoFim, String status) {
+        PedidoFiltroDTO filtro = montarFiltroPedido(id, nomeSolicitante, medicamento, dataSolicitacaoInicio,
+                dataSolicitacaoFim, status);
+        Specification<SolicitacaoPedido> spec = SolicitacaoPedidoSpecification.comFiltros(filtro);
+        Page<SolicitacaoPedido> solicitacoes = solicitacaoPedidoRepository.findAll(spec, pageable);
         return solicitacoes.map(solicitacaoPedidoMapper::toPedidoResponseDTO);
+    }
+
+    private PedidoFiltroDTO montarFiltroPedido(String id, String nomeSolicitante, String medicamento,
+                                                String dataSolicitacaoInicio, String dataSolicitacaoFim,
+                                                String status) {
+        UUID idFiltro = StringUtils.hasText(id) ? parseUUID(id) : null;
+        Status statusFiltro = StringUtils.hasText(status) ? parseStatus(status) : null;
+        LocalDate inicio = StringUtils.hasText(dataSolicitacaoInicio)
+                ? parseData(dataSolicitacaoInicio, "dataSolicitacaoInicio") : null;
+        LocalDate fim = StringUtils.hasText(dataSolicitacaoFim)
+                ? parseData(dataSolicitacaoFim, "dataSolicitacaoFim") : null;
+
+        if (inicio != null && fim != null && inicio.isAfter(fim)) {
+            throw new IllegalArgumentException("dataSolicitacaoInicio não pode ser posterior a dataSolicitacaoFim");
+        }
+
+        return new PedidoFiltroDTO(idFiltro, nomeSolicitante, medicamento, inicio, fim, statusFiltro);
+    }
+
+    private UUID parseUUID(String valor) {
+        try {
+            return UUID.fromString(valor);
+        } catch (IllegalArgumentException e) {
+            throw new IllegalArgumentException("Valor de 'id' inválido: " + valor);
+        }
+    }
+
+    private Status parseStatus(String valor) {
+        try {
+            return Status.valueOf(valor);
+        } catch (IllegalArgumentException e) {
+            throw new IllegalArgumentException(
+                    "Status inválido: '" + valor + "'. Valores aceitos: " + Arrays.toString(Status.values()));
+        }
+    }
+
+    private LocalDate parseData(String valor, String nomeParametro) {
+        try {
+            return LocalDate.parse(valor, DateTimeFormatter.ISO_LOCAL_DATE);
+        } catch (DateTimeParseException e) {
+            throw new IllegalArgumentException(
+                    "Formato inválido para '" + nomeParametro + "'. Use o formato yyyy-MM-dd.");
+        }
     }
 
     @Transactional
@@ -276,8 +331,7 @@ public class SolicitacaoService {
 
     @Transactional(readOnly = true)
     public Page<PedidoResponseDTO> findAllSolicitacaoPedidoByStatusAtual(String status, Pageable pageable) {
-        Page<SolicitacaoPedido> solicitacoes = solicitacaoPedidoRepository.findAllByStatusAtual(Status.valueOf(status), pageable);
-        return solicitacoes.map(solicitacaoPedidoMapper::toPedidoResponseDTO);
+        return findAllPedidos(pageable, null, null, null, null, null, status);
     }
 
     @Transactional(readOnly = true)
