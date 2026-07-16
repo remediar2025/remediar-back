@@ -12,6 +12,7 @@ import com.remediar.back_remediar.service.exceptions.ObjectNotFoundException;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentMatchers;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.MockedStatic;
@@ -20,6 +21,7 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.jpa.domain.Specification;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContext;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -146,18 +148,36 @@ class SolicitacaoServiceTest {
         List<SolicitacaoPedido> solicitacoes = Arrays.asList(solicitacaoPedido);
         Page<SolicitacaoPedido> page = new PageImpl<>(solicitacoes, pageable, 1);
 
-        when(solicitacaoPedidoRepository.findAll(pageable)).thenReturn(page);
+        when(solicitacaoPedidoRepository.findAll(ArgumentMatchers.<Specification<SolicitacaoPedido>>any(), eq(pageable)))
+                .thenReturn(page);
         when(solicitacaoPedidoMapper.toPedidoResponseDTO(any(SolicitacaoPedido.class)))
                 .thenReturn(pedidoResponseDTO);
 
         // Act
-        Page<PedidoResponseDTO> result = solicitacaoService.findAllPedidos(pageable);
+        Page<PedidoResponseDTO> result = solicitacaoService.findAllPedidos(
+                pageable, null, null, null, null, null, null);
 
         // Assert
         assertNotNull(result);
         assertEquals(1, result.getTotalElements());
-        verify(solicitacaoPedidoRepository).findAll(pageable);
         verify(solicitacaoPedidoMapper).toPedidoResponseDTO(solicitacaoPedido);
+    }
+
+    @Test
+    void findAllPedidos_WithInvalidStatus_ShouldThrowIllegalArgumentException() {
+        Pageable pageable = PageRequest.of(0, 10);
+
+        assertThrows(IllegalArgumentException.class,
+                () -> solicitacaoService.findAllPedidos(pageable, null, null, null, null, null, "NAO_EXISTE"));
+    }
+
+    @Test
+    void findAllPedidos_WithInicioAfterFim_ShouldThrowIllegalArgumentException() {
+        Pageable pageable = PageRequest.of(0, 10);
+
+        assertThrows(IllegalArgumentException.class,
+                () -> solicitacaoService.findAllPedidos(
+                        pageable, null, null, null, "2026-07-15", "2026-07-01", null));
     }
 
     @Test
